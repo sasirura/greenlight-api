@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/felixge/httpsnoop"
 	"github.com/sasirura/greeenlight-api/internal/data"
 	"github.com/sasirura/greeenlight-api/internal/validator"
 	"golang.org/x/time/rate"
@@ -212,23 +214,23 @@ func (app *application) metrics(next http.Handler) http.Handler {
 	totalResponsesSent := expvar.NewInt("total_responses_sent")
 	totalProcessingTimeMiroSeconds := expvar.NewInt("total_processing_time_μs")
 
+	// New expvar for hold the count of responses for each HTTP status code
+	totalResponsesSentByStatus := expvar.NewMap("total_responses_sent_by_status")
+
 	// Following code will be run for every requests
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-		start := time.Now()
 
 		// Use the Add() method to increment the number of requests recevied by 1
 		totalRequestsReceived.Add(1)
 
-		// Call the next handler in the chain
-		next.ServeHTTP(w, r)
+		metrics := httpsnoop.CaptureMetrics(next, w, r)
 
 		// On the way back up the middleware chain, increment the number of responses
 		totalResponsesSent.Add(1)
 
 		// Calculate the number of microseconds since we begin to process the request,
 		// then increment the total processing time by this amount
-		duration := time.Since(start).Microseconds()
-		totalProcessingTimeMiroSeconds.Add(duration)
+		totalProcessingTimeMiroSeconds.Add(metrics.Duration.Microseconds())
+		totalResponsesSentByStatus.Add(strconv.Itoa(metrics.Code), 1)
 	})
 }
