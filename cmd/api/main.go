@@ -18,8 +18,6 @@ import (
 	"github.com/sasirura/greeenlight-api/internal/mailer"
 )
 
-const version = "1.0.0"
-
 type config struct {
 	port int
 	env  string
@@ -55,7 +53,10 @@ type application struct {
 	wg     sync.WaitGroup
 }
 
-var buildTime string
+var (
+	buildTime string
+	version   string
+)
 
 func main() {
 	var cfg config
